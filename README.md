@@ -7,6 +7,23 @@ A pixel-perfect clone of [Weavy.ai](https://weavy.ai) — a visual workflow buil
 ![React Flow](https://img.shields.io/badge/React_Flow-12-purple)
 ![Trigger.dev](https://img.shields.io/badge/Trigger.dev-Enabled-green)
 
+---
+
+## Table of Contents
+
+- [Features](#features)
+- [Tech Stack](#tech-stack)
+- [Getting Started](#getting-started)
+  - [Prerequisites](#prerequisites)
+  - [Installation](#installation)
+- [Environment Variables](#environment-variables)
+- [Project Structure](#project-structure)
+- [Documentation](#documentation)
+- [License](#license)
+- [Connect with me](#connect-with-me)
+
+---
+
 ## Features
 
 - **Visual Workflow Canvas** — React Flow with drag & drop, panning, zooming, and minimap
@@ -56,7 +73,7 @@ npm install
 
 # Set up environment variables
 cp .env.example .env
-# Fill in your API keys in .env
+# Fill in your API keys in .env (see .env.example for detailed instructions)
 
 # Push database schema
 npx prisma db push
@@ -72,13 +89,15 @@ Open [http://localhost:3000](http://localhost:3000) to view the app.
 
 ## Environment Variables
 
-| Variable | Description |
-|----------|-------------|
-| `DATABASE_URL` | PostgreSQL connection string |
-| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Clerk publishable key |
-| `CLERK_SECRET_KEY` | Clerk secret key |
-| `GEMINI_API_KEY` | Google Gemini API key |
-| `TRIGGER_SECRET_KEY` | Trigger.dev secret key |
+See [`.env.example`](.env.example) for detailed setup instructions.
+
+| Variable | Description | Get it from |
+|----------|-------------|-------------|
+| `DATABASE_URL` | PostgreSQL connection string | [Neon](https://neon.tech) |
+| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Clerk publishable key | [Clerk](https://clerk.com) |
+| `CLERK_SECRET_KEY` | Clerk secret key | [Clerk](https://clerk.com) |
+| `GEMINI_API_KEY` | Google Gemini API key | [Google AI Studio](https://aistudio.google.com) |
+| `TRIGGER_SECRET_KEY` | Trigger.dev secret key | [Trigger.dev](https://trigger.dev) |
 
 ## Project Structure
 
@@ -93,10 +112,17 @@ src/
 └── prisma/              # Database schema
 ```
 
+## Documentation
+
+| Document | Description |
+|----------|-------------|
+| [High-Level Design (HLD)](docs/HLD.md) | System architecture, components, and data flow |
+| [Low-Level Design (LLD)](docs/LLD.md) | Database schema, API endpoints, and execution flow |
+
 ## License
 
 MIT License - see [LICENSE](LICENSE) file for details.
 
 ## Connect with me
 
-If you’d like to connect, feel free to reach out — [Click here](https://minianonlink.vercel.app/tusharbhardwaj)
+If you'd like to connect, feel free to reach out — [Click here](https://minianonlink.vercel.app/tusharbhardwaj)
