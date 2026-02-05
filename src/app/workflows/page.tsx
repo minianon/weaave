@@ -1,19 +1,19 @@
 "use client";
 
-import React, {useEffect, useState} from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
-import {useRouter} from "next/navigation";
-import {Loader2, Plus, Search, Clock, Trash2, ChevronRight} from "lucide-react";
-import {getAllWorkflowsAction, deleteWorkflowAction, saveWorkflowAction} from "@/app/actions/workflowActions";
-import {DEMO_WORKFLOWS} from "@/lib/demoWorkflows";
+import { useRouter } from "next/navigation";
+import { Loader2, Plus, Search, Clock, Trash2, ChevronRight } from "lucide-react";
+import { getAllWorkflowsAction, deleteWorkflowAction, saveWorkflowAction } from "@/app/actions/workflowActions";
+import { DEMO_WORKFLOWS } from "@/lib/demoWorkflows";
 import Sidebar from "@/components/workflow/Sidebar";
 import SidebarNavigation from "@/components/workflow/SidebarNavigation";
-import type {Workflow} from "@/lib/types";
-import {useUser} from "@clerk/nextjs";
+import type { Workflow } from "@/lib/types";
+import { useUser } from "@clerk/nextjs";
 
 export default function DashboardPage() {
     const router = useRouter();
-    const {user} = useUser();
+    const { user } = useUser();
     const [workflows, setWorkflows] = useState<Workflow[]>([]);
     const [loading, setLoading] = useState(true);
     const [creating, setCreating] = useState(false);
@@ -125,36 +125,49 @@ export default function DashboardPage() {
                 </header>
 
                 <div className="flex-1 overflow-y-auto p-8">
-                    {/* --- WORKFLOW LIBRARY --- */}
+                    {/* --- WORKFLOW LIBRARY SECTION --- */}
                     <section className="mb-10">
-                        <div className="flex items-center gap-6 mb-5">
-                            <h2 className="text-sm font-semibold text-white/90 px-3 py-1 bg-white/5 rounded-full">Workflow library</h2>
-                            <span className="text-sm text-white/40 hover:text-white cursor-pointer transition-colors">Tutorials</span>
+                        <div className="flex items-center gap-6 mb-6 border-b border-white/5">
+                            <button className="pb-3 text-sm font-medium text-white border-b-2 border-white/60">
+                                Workflow library
+                            </button>
+                            <button className="pb-3 text-sm font-medium text-white/40 hover:text-white/60 transition-colors">
+                                Tutorials
+                            </button>
                         </div>
 
-                        <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide">
+                        <div className="flex gap-4 overflow-x-auto pb-6 scrollbar-hide">
                             {DEMO_WORKFLOWS.map((demo) => (
                                 <Link
                                     key={demo.id}
                                     href={`/workflows/${demo.id}`}
-                                    className="group relative min-w-[200px] h-[140px] rounded-xl overflow-hidden border border-white/10 hover:border-[#dfff4f]/50 transition-all hover:-translate-y-1 bg-gradient-to-br from-[#2a2a2a] to-[#1a1a1a]">
-                                    {/* Content */}
-                                    <div className="relative h-full p-4 flex flex-col">
-                                        {/* Thumbnail/Icon */}
-                                        <div className="flex-1 flex items-center justify-center">
-                                            <div className="text-4xl">{demo.thumbnail}</div>
-                                        </div>
+                                    className="group relative min-w-[200px] md:min-w-[240px] aspect-[16/10] rounded-xl overflow-hidden border border-white/5 bg-[#111] transition-all hover:border-white/20"
+                                >
+                                    {/* Image Background */}
+                                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent z-10" />
 
-                                        {/* Name */}
-                                        <div>
-                                            <h3 className="text-sm font-semibold text-white truncate">{demo.name}</h3>
-                                            <p className="text-xs text-white/50 truncate mt-0.5">{demo.description}</p>
-                                        </div>
+                                    <div className="absolute inset-0 bg-[#1a1a1a]">
+                                        {(demo as any).image ? (
+                                            <img
+                                                src={(demo as any).image}
+                                                alt={demo.name}
+                                                className="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-opacity duration-500"
+                                            />
+                                        ) : (
+                                            <div className="w-full h-full flex items-center justify-center opacity-20 group-hover:opacity-40 transition-opacity">
+                                                <div className="text-4xl">{demo.thumbnail}</div>
+                                            </div>
+                                        )}
                                     </div>
 
-                                    {/* Arrow on hover */}
-                                    <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <ChevronRight size={16} className="text-white" />
+                                    {/* Content Overlay */}
+                                    <div className="absolute inset-x-0 bottom-0 p-4 z-20 bg-gradient-to-t from-black/90 to-transparent">
+                                        <h3 className="text-sm font-bold text-white mb-0.5 group-hover:text-[#F7FFA8] transition-colors">
+                                            {demo.name}
+                                        </h3>
+                                        <p className="text-[11px] text-white/50 line-clamp-1">
+                                            {demo.description}
+                                        </p>
                                     </div>
                                 </Link>
                             ))}
@@ -234,7 +247,7 @@ export default function DashboardPage() {
 }
 
 // Workflow Icon
-function WorkflowIcon({size}: {size?: number}) {
+function WorkflowIcon({ size }: { size?: number }) {
     return (
         <svg
             xmlns="http://www.w3.org/2000/svg"

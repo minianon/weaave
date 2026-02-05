@@ -6,7 +6,8 @@ export const DEMO_WORKFLOWS = [
         id: "demo-product-listing",
         name: "Product Listing Generator",
         description: "Generate SEO, Social, and Description from product images.",
-        thumbnail: "🛍️",
+        thumbnail: "🎯",
+        image: "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?q=80&w=1000&auto=format&fit=crop",
         getGraph: (): { nodes: AppNode[], edges: Edge[] } => {
             const nodes: AppNode[] = [
                 // 1. INPUTS (3 Images) - Using local demo images
