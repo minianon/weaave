@@ -7,6 +7,9 @@ A pixel-perfect clone of [Weavy.ai](https://weavy.ai) — a visual workflow buil
 ![React Flow](https://img.shields.io/badge/React_Flow-12-purple)
 ![Trigger.dev](https://img.shields.io/badge/Trigger.dev-Enabled-green)
 
+
+**Watch the Demo:** [Click here to watch on Loom](https://www.loom.com/share/49a6cdb5c53449bd82d7528752ee976c)
+
 ---
 
 ## Table of Contents
