@@ -4,7 +4,7 @@ import React, { useCallback, useState, useEffect, useRef } from "react";
 import { Handle, Position, NodeProps, useReactFlow, useUpdateNodeInternals } from "@xyflow/react";
 import { Bot, Plus, Loader2, MoreHorizontal, Check, Copy, Trash2, X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { LLMNodeData, LLMNodeType, TextNodeData, ImageNodeData } from "@/lib/types";
+import type { LLMNodeData, LLMNodeType, TextNodeData, ImageNodeData, CropImageNodeData, ExtractFrameNodeData } from "@/lib/types";
 import { useWorkflowStore } from "@/store/workflowStore";
 import { useAuth } from "@clerk/nextjs";
 import { executeNodeAction } from "@/app/actions/workflowActions";
@@ -149,7 +149,8 @@ export default function LLMNode({ id, data, isConnectable, selected }: NodeProps
 
 				// NEW: Handle inputs from Crop/Extract/Video nodes
 				if (sourceNode.type === "cropImageNode" && edge.targetHandle?.startsWith("image")) {
-					const url = sourceNode.data.outputUrl; // Assuming this field exists and public URL is stored
+					const data = sourceNode.data as CropImageNodeData;
+					const url = data.outputUrl; // Assuming this field exists and public URL is stored
 					// If outputUrl not available in data (it should be if run previously), we might miss it.
 					// The orchestrator stores it in `context`. But here for single run we rely on node data state.
 					// IMPORTANT: Previous nodes must have been run for their data to be available here in the editor state!
@@ -157,7 +158,8 @@ export default function LLMNode({ id, data, isConnectable, selected }: NodeProps
 				}
 
 				if (sourceNode.type === "extractFrameNode" && edge.targetHandle?.startsWith("image")) {
-					const url = sourceNode.data.outputUrl;
+					const data = sourceNode.data as ExtractFrameNodeData;
+					const url = data.outputUrl;
 					if (url) imageUrls.push(url);
 				}
 
