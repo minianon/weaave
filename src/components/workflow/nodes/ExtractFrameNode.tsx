@@ -4,7 +4,7 @@ import React, { useCallback, useRef, useState, useEffect } from "react";
 import { Handle, Position, NodeProps, useReactFlow } from "@xyflow/react";
 import { Film, MoreHorizontal, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { ExtractFrameNodeType } from "@/lib/types";
+import { ExtractFrameNodeType, VideoNodeData } from "@/lib/types";
 import { useWorkflowStore } from "@/store/workflowStore";
 import { executeNodeAction } from "@/app/actions/workflowActions";
 import { Loader2 } from "lucide-react";
@@ -47,7 +47,8 @@ export default function ExtractFrameNode({ id, data, isConnectable, selected }: 
             if (incomingEdge) {
                 const sourceNode = allNodes.find(n => n.id === incomingEdge.source);
                 if (sourceNode && sourceNode.type === "videoNode") {
-                    inputVideoUrl = sourceNode.data.file?.url;
+                    const data = sourceNode.data as VideoNodeData;
+                    inputVideoUrl = data.file?.url as string;
                 }
             }
 
