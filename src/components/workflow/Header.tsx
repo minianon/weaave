@@ -1,17 +1,62 @@
 "use client";
 
-import React, {useState, useCallback} from "react";
-import {Save, Loader2, Share2, FolderOpen, Play} from "lucide-react";
-import {useWorkflowStore} from "@/store/workflowStore";
-import {saveWorkflowAction, runWorkflowAction} from "@/app/actions/workflowActions";
+import React, { useState, useCallback, useRef } from "react";
+import { Save, Loader2, Share2, FolderOpen, Play, Upload } from "lucide-react";
+import { useWorkflowStore } from "@/store/workflowStore";
+import { saveWorkflowAction, runWorkflowAction } from "@/app/actions/workflowActions";
 import LoadWorkflowModal from "./LoadWorkflowModal";
+import { WorkflowData } from "@/lib/schemas";
 
 export default function Header() {
-	const {nodes, edges, workflowId, workflowName, setWorkflowId, setWorkflowName} = useWorkflowStore();
+	const { nodes, edges, workflowId, workflowName, setWorkflowId, setWorkflowName, setNodes, setEdges } = useWorkflowStore();
 	const [isSaving, setIsSaving] = useState(false);
-	const [isRunning, setIsRunning] = useState(false); // 👈 Added state for running
+	const [isRunning, setIsRunning] = useState(false);
 	const [isLoadOpen, setIsLoadOpen] = useState(false);
 	const [isEditingName, setIsEditingName] = useState(false);
+	const fileInputRef = useRef<HTMLInputElement>(null);
+
+	// --- HANDLE IMPORT ---
+	const handleImportClick = () => {
+		fileInputRef.current?.click();
+	};
+
+	const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+		const file = e.target.files?.[0];
+		if (!file) return;
+
+		const reader = new FileReader();
+		reader.onload = (event) => {
+			try {
+				const json = event.target?.result as string;
+				const data = JSON.parse(json) as WorkflowData;
+
+				// Basic validation (could use Zod here too if we wanted client-side val)
+				if (Array.isArray(data.nodes) && Array.isArray(data.edges)) {
+					// Ask for confirmation if canvas is not empty
+					if (nodes.length > 0) {
+						if (!confirm("Start new? This will overwrite your current canvas.")) {
+							return;
+						}
+					}
+
+					setNodes(data.nodes as any);
+					setEdges(data.edges);
+					if (data.name) setWorkflowName(data.name);
+					// Reset ID since it's a new import (or keep it if we want to overwrite? usually import = new)
+					setWorkflowId("");
+					alert("Workflow imported successfully!");
+				} else {
+					alert("Invalid workflow file format.");
+				}
+			} catch (err) {
+				console.error(err);
+				alert("Failed to parse JSON file.");
+			}
+			// Reset input
+			if (fileInputRef.current) fileInputRef.current.value = "";
+		};
+		reader.readAsText(file);
+	};
 
 	// --- HANDLE SAVE ---
 	const handleSave = async () => {
@@ -71,7 +116,7 @@ export default function Header() {
 			const res = await runWorkflowAction(currentId);
 			if (res.success) {
 				console.log(`Workflow run started! Run ID: ${res.runId}`);
-			
+
 				if (typeof res.runId === "string") {
 					localStorage.setItem("lastRunId", res.runId);
 				}
@@ -103,7 +148,7 @@ export default function Header() {
 		};
 
 		const jsonString = JSON.stringify(workflowData, null, 2);
-		const blob = new Blob([jsonString], {type: "application/json"});
+		const blob = new Blob([jsonString], { type: "application/json" });
 		const url = URL.createObjectURL(blob);
 		const link = document.createElement("a");
 		link.href = url;
@@ -158,6 +203,21 @@ export default function Header() {
 						<FolderOpen size={14} />
 						OPEN
 					</button>
+
+					{/* Import Button */}
+					<button
+						onClick={handleImportClick}
+						className="flex items-center gap-2 px-3 py-2 bg-[#222] border border-white/10 text-white text-xs font-bold rounded-lg hover:bg-white/10 transition-all">
+						<Upload size={14} />
+						IMPORT
+					</button>
+					<input
+						type="file"
+						ref={fileInputRef}
+						onChange={handleFileChange}
+						accept=".json"
+						className="hidden"
+					/>
 
 					{/* Share Button */}
 					<button

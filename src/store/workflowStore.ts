@@ -35,6 +35,8 @@ type WorkflowState = {
     deleteNode: (id: string) => void;
     setWorkflowId: (id: string) => void;
     setWorkflowName: (name: string) => void;
+    setNodes: (nodes: AppNode[]) => void;
+    setEdges: (edges: Edge[]) => void;
     clearUserData: () => void;
 };
 
@@ -138,7 +140,12 @@ export const useWorkflowStore = create<WorkflowState>()(
                 setWorkflowName: (name: string) => {
                     set({ workflowName: name });
                 },
-
+                setNodes: (nodes: AppNode[]) => {
+                    set({ nodes });
+                },
+                setEdges: (edges: Edge[]) => {
+                    set({ edges });
+                },
                 clearUserData: () => {
                     set({
                         userId: null,

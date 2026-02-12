@@ -32,11 +32,12 @@ A pixel-perfect clone of [Weavy.ai](https://weavy.ai) — a visual workflow buil
 - **Visual Workflow Canvas** — React Flow with drag & drop, panning, zooming, and minimap
 - **6 Node Types** — Text, Image Upload, Video Upload, LLM, Crop Image, Extract Frame
 - **AI-Powered Execution** — Google Gemini API with vision support
-- **Background Processing** — All node executions via Trigger.dev tasks
+- **Background Processing** — All node executions via Trigger.dev tasks (No client-side API calls)
 - **Workflow History** — Full execution history with node-level details
 - **Real-time Status** — Pulsating glow effect on running nodes
-- **Parallel Execution** — Independent branches run concurrently
-- **Media Processing** — Cloud-native video processing with FFmpeg & Transloadit
+- **Parallel Execution** — Independent branches run concurrently via Trigger.dev
+- **Media Processing** — Cloud-native video processing with **FFmpeg** on Trigger.dev
+- **File Uploads** — Secure, scalable uploads via **Transloadit**
 - **Authentication** — Clerk-powered user authentication
 - **Data Persistence** — PostgreSQL with Prisma ORM
 

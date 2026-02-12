@@ -5,6 +5,8 @@ import { auth, currentUser } from "@clerk/nextjs/server";
 import { revalidatePath } from "next/cache";
 import { tasks, runs } from "@trigger.dev/sdk/v3";
 import type { SaveWorkflowParams } from "@/lib/types";
+import { saveWorkflowSchema } from "@/lib/schemas";
+import { z } from "zod";
 
 // Helper to ensure User exists in our DB before acting
 async function ensureUserExists(userId: string) {
@@ -30,12 +32,25 @@ async function ensureUserExists(userId: string) {
 // ------------------------------------------------------------------
 // SAVE ACTION
 // ------------------------------------------------------------------
-export async function saveWorkflowAction({ id, name, nodes, edges }: SaveWorkflowParams) {
+export async function saveWorkflowAction(params: SaveWorkflowParams) {
     try {
-        const { userId } = await auth();
-        if (!userId) return { success: false, error: "Unauthorized" };
+        const user = await currentUser();
+        if (!user) {
+            return { success: false, error: "Unauthorized" };
+        }
 
-        await ensureUserExists(userId);
+        // Validate Input using Zod
+        const result = saveWorkflowSchema.safeParse(params);
+        if (!result.success) {
+            console.error("Validation Error:", result.error.format());
+            // Zod v3 uses .issues or .errors. If TS complains about .errors, we can map .issues.
+            const firstError = result.error.issues[0];
+            return { success: false, error: "Invalid workflow data: " + firstError.message };
+        }
+
+        const { id, name, nodes, edges } = result.data;
+
+        await ensureUserExists(user.id);
 
         // Prepare JSON data
         // We cast to 'any' because Prisma's InputJsonValue is stricter than 
@@ -52,7 +67,7 @@ export async function saveWorkflowAction({ id, name, nodes, edges }: SaveWorkflo
             const workflow = await prisma.workflow.update({
                 where: {
                     id: numericId,
-                    userId: userId,
+                    userId: user.id,
                 },
                 data: {
                     name,
@@ -64,13 +79,13 @@ export async function saveWorkflowAction({ id, name, nodes, edges }: SaveWorkflo
             return { success: true, id: workflow.id.toString() };
         } else {
             // CREATE New
-            console.log(`Creating New Workflow for: ${userId}`);
+            console.log(`Creating New Workflow for: ${user.id}`);
 
             const workflow = await prisma.workflow.create({
                 data: {
                     name,
                     data: workflowData as any,
-                    userId,
+                    userId: user.id,
                 },
             });
 
@@ -246,9 +261,23 @@ export async function runWorkflowAction(workflowId: string) {
 // EXECUTE SINGLE NODE ACTION (Trigger.dev)
 // ------------------------------------------------------------------
 export async function executeNodeAction(nodeType: string, data: any) {
+    // Basic Input Validation for Node Execution
+    if (!nodeType || !data) {
+        return { success: false, error: "Invalid input: Missing nodeType or data" };
+    }
+
+    // Optional: Add specific schemas for node types here if needed
+    // For now, we ensure basic structure is valid JSON
     try {
-        const { userId } = await auth();
-        if (!userId) return { success: false, error: "Unauthorized" };
+        JSON.stringify(data);
+    } catch (e) {
+        return { success: false, error: "Invalid data: Not JSON serializable" };
+    }
+
+    try {
+        const user = await currentUser();
+        if (!user) return { success: false, error: "Unauthorized" };
+        const userId = user.id; // Define userId from the currentUser
 
         const workflowId = data.workflowId ? parseInt(data.workflowId) : null;
         if (!workflowId) {
