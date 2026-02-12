@@ -43,7 +43,7 @@ Weave is a visual workflow builder that enables users to create AI-powered autom
 │     EXTERNAL APIS        │
 ├──────────────────────────┤
 │  • Google Gemini API     │   │     TRANSLOADIT          │
-│  • FFmpeg (via Trigger)  │   │  (Media Uploads/Processing)   │
+│  • FFmpeg (via Trigger)  │   │(Media Uploads/Processing)│
 └──────────────────────────┘   └──────────────────────────┘
 ```
 
