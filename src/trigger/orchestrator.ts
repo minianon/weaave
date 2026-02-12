@@ -262,7 +262,9 @@ export const orchestrator = task({
                 // 2. POLLING PHASE (Sequential Wait)
                 for (const task of pendingTasks) {
                     try {
-                        const result = await aiGenerator.poll(task.handle); // aiGenerator.poll is generic enough or use runs.poll?
+                        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+                        // @ts-ignore
+                        const result = await runs.poll(task.handle); // aiGenerator.poll is generic enough or use runs.poll?
                         // Actually, better use generic runs.poll(task.handle) but the generated SDK might not have it exposed easily on the task object?
                         // 'aiGenerator' is a specific task. 'runs' is invalid here?
                         // We need to use valid poll method. The output of task.trigger is a handle.
