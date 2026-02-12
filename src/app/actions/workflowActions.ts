@@ -3,7 +3,7 @@
 import prisma from "@/lib/prisma";
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { revalidatePath } from "next/cache";
-import { tasks } from "@trigger.dev/sdk/v3";
+import { tasks, runs } from "@trigger.dev/sdk/v3";
 import type { SaveWorkflowParams } from "@/lib/types";
 
 // Helper to ensure User exists in our DB before acting
@@ -74,6 +74,7 @@ export async function saveWorkflowAction({ id, name, nodes, edges }: SaveWorkflo
                 },
             });
 
+            console.log(`[Action] Created Workflow with ID: ${workflow.id}`);
             revalidatePath("/workflows");
             return { success: true, id: workflow.id.toString() };
         }
@@ -123,7 +124,12 @@ export async function loadWorkflowAction(id: string) {
 export async function getAllWorkflowsAction() {
     try {
         const { userId } = await auth();
-        if (!userId) return { success: false, error: "Unauthorized", workflows: [] };
+        console.log(`[getAllWorkflowsAction] Fetching workflows for User: ${userId}`);
+
+        if (!userId) {
+            console.error("[getAllWorkflowsAction] No User ID found (Unauthorized)");
+            return { success: false, error: "Unauthorized", workflows: [] };
+        }
 
         const workflows = await prisma.workflow.findMany({
             where: { userId },
@@ -135,6 +141,8 @@ export async function getAllWorkflowsAction() {
                 createdAt: true,
             },
         });
+
+        console.log(`[getAllWorkflowsAction] Found ${workflows.length} workflows`);
 
         interface WorkflowSummary {
             id: string;
@@ -231,5 +239,133 @@ export async function runWorkflowAction(workflowId: string) {
     } catch (error) {
         console.error("[Action] CRITICAL FAILURE:", error); // This will show the real error
         return { success: false, error: "Failed to run workflow. Check server logs." };
+    }
+}
+
+// ------------------------------------------------------------------
+// EXECUTE SINGLE NODE ACTION (Trigger.dev)
+// ------------------------------------------------------------------
+export async function executeNodeAction(nodeType: string, data: any) {
+    try {
+        const { userId } = await auth();
+        if (!userId) return { success: false, error: "Unauthorized" };
+
+        const workflowId = data.workflowId ? parseInt(data.workflowId) : null;
+        if (!workflowId) {
+            return { success: false, error: "Please save the workflow before running nodes." };
+        }
+
+        // 1. Create a "Single Node" Run Record
+        const run = await prisma.workflowRun.create({
+            data: {
+                workflowId: workflowId,
+                status: "RUNNING",
+                triggerType: "SINGLE_NODE",
+            }
+        });
+
+        // 2. Create the Node Execution Record
+        const nodeExecution = await prisma.nodeExecution.create({
+            data: {
+                runId: run.id,
+                nodeId: data.id || "unknown-node",
+                nodeType: nodeType,
+                status: "RUNNING",
+                inputData: data,
+                startedAt: new Date(),
+            }
+        });
+
+        let taskPayload: any;
+        let taskId: string;
+
+        switch (nodeType) {
+            case "llmNode":
+                taskId = "generate-text";
+                taskPayload = {
+                    model: data.model,
+                    prompt: data.prompt,
+                    systemPrompt: data.systemPrompt,
+                    imageUrls: data.imageUrls
+                };
+                break;
+
+            case "cropImageNode":
+                taskId = "crop-image";
+                taskPayload = {
+                    imageUrl: data.imageUrl,
+                    x: data.xPercent,
+                    y: data.yPercent,
+                    width: data.widthPercent,
+                    height: data.heightPercent
+                };
+                break;
+
+            case "extractFrameNode":
+                taskId = "extract-frame";
+                taskPayload = {
+                    videoUrl: data.videoUrl,
+                    timestamp: data.timestamp
+                };
+                break;
+
+            default:
+                throw new Error("Unknown node type");
+        }
+
+        try {
+            // Step 1: Fire the task
+            const handle = await tasks.trigger(taskId, taskPayload);
+
+            // Step 2: Poll until complete
+            const completedRun = await runs.poll(handle, { pollIntervalMs: 500 });
+
+            // Step 3: Check result
+            if (completedRun.output && (completedRun.output as any).success !== false) {
+                await prisma.nodeExecution.update({
+                    where: { id: nodeExecution.id },
+                    data: {
+                        status: "SUCCESS",
+                        finishedAt: new Date(),
+                        outputData: completedRun.output as any
+                    }
+                });
+
+                await prisma.workflowRun.update({
+                    where: { id: run.id },
+                    data: { status: "COMPLETED", finishedAt: new Date() }
+                });
+
+                revalidatePath(`/workflows/${workflowId}`);
+                return { success: true, output: completedRun.output };
+            } else {
+                throw new Error((completedRun.output as any)?.error || "Task returned failure");
+            }
+
+        } catch (taskError: any) {
+            console.error("Task Execution Failed:", taskError);
+            const errorMessage = taskError.message || "Unknown error";
+
+            await prisma.nodeExecution.update({
+                where: { id: nodeExecution.id },
+                data: {
+                    status: "FAILED",
+                    finishedAt: new Date(),
+                    error: errorMessage
+                }
+            });
+
+            await prisma.workflowRun.update({
+                where: { id: run.id },
+                data: { status: "FAILED", finishedAt: new Date() }
+            });
+
+            revalidatePath(`/workflows/${workflowId}`);
+            return { success: false, error: errorMessage };
+        }
+
+    } catch (error) {
+        console.error("Execute Node Error:", error);
+        return { success: false, error: "Failed to execute node." };
     }
 }

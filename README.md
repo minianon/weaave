@@ -36,6 +36,7 @@ A pixel-perfect clone of [Weavy.ai](https://weavy.ai) — a visual workflow buil
 - **Workflow History** — Full execution history with node-level details
 - **Real-time Status** — Pulsating glow effect on running nodes
 - **Parallel Execution** — Independent branches run concurrently
+- **Media Processing** — Cloud-native video processing with FFmpeg & Transloadit
 - **Authentication** — Clerk-powered user authentication
 - **Data Persistence** — PostgreSQL with Prisma ORM
 
@@ -101,6 +102,8 @@ See [`.env.example`](.env.example) for detailed setup instructions.
 | `CLERK_SECRET_KEY` | Clerk secret key | [Clerk](https://clerk.com) |
 | `GEMINI_API_KEY` | Google Gemini API key | [Google AI Studio](https://aistudio.google.com) |
 | `TRIGGER_SECRET_KEY` | Trigger.dev secret key | [Trigger.dev](https://trigger.dev) |
+| `NEXT_PUBLIC_TRANSLOADIT_AUTH_KEY` | Transloadit Auth Key | [Transloadit](https://transloadit.com) |
+| `NEXT_PUBLIC_TRANSLOADIT_TEMPLATE_ID` | Transloadit Template ID | [Transloadit](https://transloadit.com) |
 
 ## Project Structure
 

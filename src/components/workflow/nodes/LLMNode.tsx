@@ -1,12 +1,13 @@
 "use client";
 
-import React, {useCallback, useState, useEffect, useRef} from "react";
-import {Handle, Position, NodeProps, useReactFlow, useUpdateNodeInternals} from "@xyflow/react";
-import {Bot, Plus, Loader2, MoreHorizontal, Check, Copy, Trash2, X} from "lucide-react";
-import {cn} from "@/lib/utils";
-import type {LLMNodeData, LLMNodeType, TextNodeData, ImageNodeData} from "@/lib/types";
-import {useWorkflowStore} from "@/store/workflowStore";
-import {useAuth} from "@clerk/nextjs";
+import React, { useCallback, useState, useEffect, useRef } from "react";
+import { Handle, Position, NodeProps, useReactFlow, useUpdateNodeInternals } from "@xyflow/react";
+import { Bot, Plus, Loader2, MoreHorizontal, Check, Copy, Trash2, X } from "lucide-react";
+import { cn } from "@/lib/utils";
+import type { LLMNodeData, LLMNodeType, TextNodeData, ImageNodeData } from "@/lib/types";
+import { useWorkflowStore } from "@/store/workflowStore";
+import { useAuth } from "@clerk/nextjs";
+import { executeNodeAction } from "@/app/actions/workflowActions";
 
 // Helper to fetch base64
 async function urlToBase64(url: string): Promise<string> {
@@ -25,11 +26,11 @@ async function urlToBase64(url: string): Promise<string> {
 	}
 }
 
-export default function LLMNode({id, data, isConnectable, selected}: NodeProps<LLMNodeType>) {
-	const {userId} = useAuth();
+export default function LLMNode({ id, data, isConnectable, selected }: NodeProps<LLMNodeType>) {
+	const { userId } = useAuth();
 	const updateNodeData = useWorkflowStore((state) => state.updateNodeData);
 	const deleteNode = useWorkflowStore((state) => state.deleteNode);
-	const {getNodes, getEdges, setEdges} = useReactFlow();
+	const { getNodes, getEdges, setEdges } = useReactFlow();
 	const updateNodeInternals = useUpdateNodeInternals();
 
 	const [hoveredHandle, setHoveredHandle] = useState<string | null>(null);
@@ -64,7 +65,7 @@ export default function LLMNode({id, data, isConnectable, selected}: NodeProps<L
 	const onModelChange = useCallback(
 		(e: React.ChangeEvent<HTMLSelectElement>) => {
 			setModel(e.target.value);
-			updateNodeData(id, {model: e.target.value as LLMNodeData["model"]});
+			updateNodeData(id, { model: e.target.value as LLMNodeData["model"] });
 		},
 		[id, updateNodeData],
 	);
@@ -79,7 +80,7 @@ export default function LLMNode({id, data, isConnectable, selected}: NodeProps<L
 	}, [data.outputs]);
 
 	const handleAddImageInput = useCallback(() => {
-		updateNodeData(id, {imageHandleCount: imageHandleCount + 1});
+		updateNodeData(id, { imageHandleCount: imageHandleCount + 1 });
 	}, [id, imageHandleCount, updateNodeData]);
 
 	const handleRemoveImageInput = useCallback(
@@ -93,18 +94,18 @@ export default function LLMNode({id, data, isConnectable, selected}: NodeProps<L
 					return handleIndex < imageHandleCount - 1;
 				}),
 			);
-			updateNodeData(id, {imageHandleCount: imageHandleCount - 1});
+			updateNodeData(id, { imageHandleCount: imageHandleCount - 1 });
 		},
 		[imageHandleCount, id, updateNodeData, setEdges],
 	);
 
 	const handleRun = useCallback(async () => {
 		if (!userId) {
-			updateNodeData(id, {status: "error", errorMessage: "You must be signed in."});
+			updateNodeData(id, { status: "error", errorMessage: "You must be signed in." });
 			return;
 		}
 
-		updateNodeData(id, {status: "loading", errorMessage: undefined});
+		updateNodeData(id, { status: "loading", errorMessage: undefined });
 		try {
 			const allNodes = getNodes();
 			const allEdges = getEdges();
@@ -135,7 +136,7 @@ export default function LLMNode({id, data, isConnectable, selected}: NodeProps<L
 						if (edge.targetHandle === "system-prompt") {
 							incomingContext += `\n\n--- CONTEXT ---\n${lastOutput}`;
 						} else if (edge.targetHandle === "prompt") {
-							userPromptBase = lastOutput;
+							userPromptBase = lastOutput; // Overwrite or append? Usually LLM chaining means prompt is previous output
 						}
 					}
 				}
@@ -143,66 +144,64 @@ export default function LLMNode({id, data, isConnectable, selected}: NodeProps<L
 				if (sourceNode.type === "imageNode" && edge.targetHandle?.startsWith("image")) {
 					const imageData = sourceNode.data as ImageNodeData;
 					const imageUrl = imageData.file?.url || imageData.image;
+					if (imageUrl) imageUrls.push(imageUrl as string);
+				}
 
-					// FIX 2: Type check for imageUrl
-					if (imageUrl && typeof imageUrl === "string") {
-						if (imageUrl.startsWith("data:")) {
-							imageUrls.push(imageUrl);
-						} else if (imageUrl.startsWith("/") || imageUrl.startsWith("http")) {
-							try {
-								const base64 = await urlToBase64(imageUrl);
-								imageUrls.push(base64);
-							} catch (error) {
-								console.error(error);
-							}
-						}
-					}
+				// NEW: Handle inputs from Crop/Extract/Video nodes
+				if (sourceNode.type === "cropImageNode" && edge.targetHandle?.startsWith("image")) {
+					const url = sourceNode.data.outputUrl; // Assuming this field exists and public URL is stored
+					// If outputUrl not available in data (it should be if run previously), we might miss it.
+					// The orchestrator stores it in `context`. But here for single run we rely on node data state.
+					// IMPORTANT: Previous nodes must have been run for their data to be available here in the editor state!
+					if (url) imageUrls.push(url);
+				}
+
+				if (sourceNode.type === "extractFrameNode" && edge.targetHandle?.startsWith("image")) {
+					const url = sourceNode.data.outputUrl;
+					if (url) imageUrls.push(url);
+				}
+
+				if (sourceNode.type === "videoNode") {
+					// Video usually goes to extract/crop, but Gemini 1.5 Pro accepts video too!
+					// If edge connects to image handle, treat as video input? Gemini API handles mixed media?
+					// Our `aiGenerator` task expects `imageUrls`. Gemini supports video parts too.
+					// For now, let's assume videoNode connects to ExtractFrame mostly.
+					// If we want to support direct video, we need to update `aiGenerator` task to accept `videoUrls`.
 				}
 			}
 
 			const finalSystemPrompt = systemPromptBase + (incomingContext || "");
 			const finalUserPrompt = userPromptBase || "Process this request.";
 
-			const response = await fetch("/api/llm/execute", {
-				method: "POST",
-				headers: {
-					"Content-Type": "application/json",
-				},
-				body: JSON.stringify({
-					model: data.model,
-					prompt: finalUserPrompt,
-					systemPrompt: finalSystemPrompt || undefined,
-					imageUrls: imageUrls.length > 0 ? imageUrls : undefined,
-					temperature: data.temperature || 0.7,
-					userId: userId,
-				}),
-			});
+			if (!finalUserPrompt) {
+				// throw new Error("No prompt provided. Connect a Text Node or enter a prompt.");
+				// Allow running with just images? Usually needs some prompt.
+			}
 
-			const result = await response.json();
+			// Get workflowId from store
+			const workflowId = useWorkflowStore.getState().workflowId;
+			if (!workflowId) {
+				throw new Error("Workflow ID not found.");
+			}
 
-			if (!response.ok || result.success === false) {
+			const payload = {
+				model: data.model,
+				prompt: finalUserPrompt,
+				systemPrompt: finalSystemPrompt || undefined,
+				imageUrls: imageUrls.length > 0 ? imageUrls : undefined,
+				temperature: data.temperature || 0.7,
+				workflowId: parseInt(workflowId)
+			};
+
+			// Call Server Action
+			const result = await executeNodeAction("llmNode", payload);
+
+			if (!result.success || !result.output) {
 				throw new Error(result.error || "Failed to generate content");
 			}
 
-			let finalContent = "No output.";
-			if (typeof result.text === "string") {
-				finalContent = result.text;
-			} else if (result.output && typeof result.output.text === "string") {
-				finalContent = result.output.text;
-			} else if (typeof result.output === "string") {
-				finalContent = result.output;
-			} else {
-				finalContent = JSON.stringify(result.output || result, null, 2);
-			}
-
-			try {
-				if (finalContent.startsWith("{") || finalContent.startsWith('"')) {
-					const parsed = JSON.parse(finalContent);
-					if (parsed.text) finalContent = parsed.text;
-				}
-			} catch (e) {
-				// Not JSON
-			}
+			// Output format from Trigger.dev task
+			const finalContent = result.output.text || JSON.stringify(result.output);
 
 			updateNodeData(id, {
 				status: "success",
@@ -217,13 +216,13 @@ export default function LLMNode({id, data, isConnectable, selected}: NodeProps<L
 			});
 		} catch (error: any) {
 			console.error("Run Failed:", error);
-			updateNodeData(id, {status: "error", errorMessage: error.message || "Unknown error"});
+			updateNodeData(id, { status: "error", errorMessage: error.message || "Unknown error" });
 		}
 	}, [id, updateNodeData, getNodes, getEdges, data.model, data.temperature, userId]);
 
 	return (
 		<div
-			style={{minHeight: `${requiredHeight}px`}}
+			style={{ minHeight: `${requiredHeight}px` }}
 			className={cn(
 				"relative rounded-xl border bg-[#1a1a1a] min-w-[320px] max-w-[400px] shadow-2xl transition-all duration-300 flex flex-col",
 				selected ? "border-[#dfff4f] ring-1 ring-[#dfff4f]/50" : "border-white/10 hover:border-white/30",
@@ -346,7 +345,7 @@ export default function LLMNode({id, data, isConnectable, selected}: NodeProps<L
 			</div>
 
 			{/* Handles */}
-			<div className="absolute left-0" style={{top: "160px"}}>
+			<div className="absolute left-0" style={{ top: "160px" }}>
 				<Handle
 					type="target"
 					position={Position.Left}
@@ -362,7 +361,7 @@ export default function LLMNode({id, data, isConnectable, selected}: NodeProps<L
 					</div>
 				)}
 			</div>
-			<div className="absolute left-0" style={{top: "210px"}}>
+			<div className="absolute left-0" style={{ top: "210px" }}>
 				<Handle
 					type="target"
 					position={Position.Left}
@@ -378,10 +377,10 @@ export default function LLMNode({id, data, isConnectable, selected}: NodeProps<L
 					</div>
 				)}
 			</div>
-			{Array.from({length: imageHandleCount}).map((_, index) => {
+			{Array.from({ length: imageHandleCount }).map((_, index) => {
 				const topPosition = HANDLE_START_Y + index * HANDLE_SPACING;
 				return (
-					<div key={`image-${index}`} className="absolute left-0 flex items-center" style={{top: `${topPosition}px`}}>
+					<div key={`image-${index}`} className="absolute left-0 flex items-center" style={{ top: `${topPosition}px` }}>
 						<Handle
 							type="target"
 							position={Position.Left}

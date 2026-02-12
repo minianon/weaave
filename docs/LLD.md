@@ -116,7 +116,18 @@ interface ExtractFrameNodeData {
   status: 'idle' | 'loading' | 'success' | 'error';
 }
 // Input Handle: "video_url"
+// Input Handle: "video_url"
 // Output Handle: "output" (extracted frame URL)
+
+### Video Upload Node
+```typescript
+interface VideoNodeData {
+  label: string;
+  file?: { url: string; name: string; type: string };
+  status: 'idle' | 'uploading' | 'success' | 'error';
+}
+// Output Handle: "video_url"
+```
 ```
 
 ## 3. Trigger.dev Tasks
@@ -198,7 +209,7 @@ interface WorkflowStore {
 | DELETE | `/api/workflows/[id]` | Delete workflow |
 | POST | `/api/workflows/[id]/run` | Execute workflow |
 | GET | `/api/workflows/[id]/runs` | Get execution history |
-| POST | `/api/llm/execute` | Direct LLM execution |
+| POST | `/actions/executeNode` | Single Node Execution (Server Action) |
 
 ## 6. Execution Flow
 

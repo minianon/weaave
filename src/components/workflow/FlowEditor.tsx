@@ -1,16 +1,16 @@
 "use client";
 
-import React, {useCallback, useRef, useEffect, useState} from "react";
+import React, { useCallback, useRef, useEffect, useState } from "react";
 import {
-    ReactFlow, 
-    Background, 
-    MiniMap, 
-    useReactFlow, 
-    ReactFlowProvider, 
-    Connection, 
-    getOutgoers, 
-    Edge, 
-    Panel, 
+    ReactFlow,
+    Background,
+    MiniMap,
+    useReactFlow,
+    ReactFlowProvider,
+    Connection,
+    getOutgoers,
+    Edge,
+    Panel,
     ConnectionLineType
 } from "@xyflow/react";
 import AnimatedEdge from "./edges/AnimatedEdge";
@@ -19,15 +19,21 @@ import "@xyflow/react/dist/style.css";
 import TextNode from "@/components/workflow/nodes/TextNode";
 import ImageNode from "@/components/workflow/nodes/ImageNode";
 import LLMNode from "@/components/workflow/nodes/LLMNode";
-import {useWorkflowStore} from "@/store/workflowStore";
+import VideoNode from "@/components/workflow/nodes/VideoNode";
+import CropImageNode from "@/components/workflow/nodes/CropImageNode";
+import ExtractFrameNode from "@/components/workflow/nodes/ExtractFrameNode";
+import { useWorkflowStore } from "@/store/workflowStore";
 import CanvasControls from "./CanvasControls";
-import {useStore} from "zustand";
-import {AppNode} from "@/lib/types";
+import { useStore } from "zustand";
+import { AppNode } from "@/lib/types";
 
 const nodeTypes = {
     textNode: TextNode,
     imageNode: ImageNode,
     llmNode: LLMNode,
+    videoNode: VideoNode,
+    cropImageNode: CropImageNode,
+    extractFrameNode: ExtractFrameNode,
 };
 
 const edgeTypes = {
@@ -36,9 +42,9 @@ const edgeTypes = {
 
 function FlowContent() {
     const reactFlowWrapper = useRef<HTMLDivElement>(null);
-    const {nodes, edges, onNodesChange, onEdgesChange, onConnect, addNode} = useWorkflowStore();
-    const {screenToFlowPosition} = useReactFlow();
-    const {undo, redo} = useStore(useWorkflowStore.temporal);
+    const { nodes, edges, onNodesChange, onEdgesChange, onConnect, addNode } = useWorkflowStore();
+    const { screenToFlowPosition } = useReactFlow();
+    const { undo, redo } = useStore(useWorkflowStore.temporal);
 
     // UI State for Hand/Pan Mode
     const [isHandMode, setIsHandMode] = useState(false);
@@ -53,19 +59,31 @@ function FlowContent() {
 
             if (!sourceNode || !targetNode) return false;
 
-            if (connection.targetHandle?.startsWith("image")) {
-                if (sourceNode.type !== "imageNode") return false;
+            // 1. ImageNode/Crop/Extract -> CropImageNode
+            if (connection.targetHandle === "image_url") {
+                if (sourceNode.type === "imageNode" || sourceNode.type === "cropImageNode" || sourceNode.type === "extractFrameNode") return true;
+                return false;
             }
 
+            // 2. VideoNode -> ExtractFrameNode
+            if (connection.targetHandle === "video_url") {
+                if (sourceNode.type === "videoNode") return true;
+                return false;
+            }
+
+            // 3. LLM Inputs
             if (connection.targetHandle === "prompt" || connection.targetHandle === "system-prompt") {
                 const isTextProducer = sourceNode.type === "textNode" || sourceNode.type === "llmNode";
                 if (!isTextProducer) return false;
             }
 
-            if (connection.targetHandle === "input") {
-                if (sourceNode.type === "imageNode") return false;
+            // 4. LLM Image Inputs (accepts from Image, Crop, Extract)
+            if (connection.targetHandle?.startsWith("image")) {
+                const isImageProducer = sourceNode.type === "imageNode" || sourceNode.type === "cropImageNode" || sourceNode.type === "extractFrameNode";
+                if (!isImageProducer) return false;
             }
 
+            // 5. Check Cycles
             const hasCycle = (node: AppNode, visited = new Set<string>()): boolean => {
                 if (visited.has(node.id)) return false;
                 visited.add(node.id);
@@ -97,33 +115,54 @@ function FlowContent() {
             let newNode: AppNode;
 
             if (type === "textNode") {
-                newNode = { 
-                    id: newNodeId, 
-                    type: "textNode", 
-                    position, 
-                    data: {label: "Text Input", text: "", status: "idle"} 
+                newNode = {
+                    id: newNodeId,
+                    type: "textNode",
+                    position,
+                    data: { label: "Text Input", text: "", status: "idle" }
                 };
             } else if (type === "imageNode") {
-                newNode = { 
-                    id: newNodeId, 
-                    type: "imageNode", 
-                    position, 
-                    data: {label: "Image Input", status: "idle", inputType: "upload"} 
+                newNode = {
+                    id: newNodeId,
+                    type: "imageNode",
+                    position,
+                    data: { label: "Image Input", status: "idle", inputType: "upload" }
+                };
+            } else if (type === "videoNode") {
+                newNode = {
+                    id: newNodeId,
+                    type: "videoNode",
+                    position,
+                    data: { label: "Video Upload", status: "idle", inputType: "upload" }
+                };
+            } else if (type === "cropImageNode") {
+                newNode = {
+                    id: newNodeId,
+                    type: "cropImageNode",
+                    position,
+                    data: { label: "Crop Image", status: "idle", xPercent: 10, yPercent: 10, widthPercent: 50, heightPercent: 50 }
+                };
+            } else if (type === "extractFrameNode") {
+                newNode = {
+                    id: newNodeId,
+                    type: "extractFrameNode",
+                    position,
+                    data: { label: "Extract Frame", status: "idle", timestamp: 1.0 }
                 };
             } else {
-                newNode = { 
-                    id: newNodeId, 
-                    type: "llmNode", 
-                    position, 
-                    data: { 
-                        label: "Gemini Worker", 
-                        status: "idle", 
-                        model: "gemini-2.5-flash", 
-                        temperature: 0.7, 
-                        viewMode: "single", 
-                        outputs: [], 
-                        imageHandleCount: 1 
-                    } 
+                newNode = {
+                    id: newNodeId,
+                    type: "llmNode",
+                    position,
+                    data: {
+                        label: "Gemini Worker",
+                        status: "idle",
+                        model: "gemini-2.5-flash",
+                        temperature: 0.7,
+                        viewMode: "single",
+                        outputs: [],
+                        imageHandleCount: 1
+                    }
                 };
             }
             addNode(newNode);
@@ -133,13 +172,13 @@ function FlowContent() {
 
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
-            if ((e.ctrlKey || e.metaKey) && e.key === "z" && !e.shiftKey) { 
-                e.preventDefault(); 
-                undo(); 
+            if ((e.ctrlKey || e.metaKey) && e.key === "z" && !e.shiftKey) {
+                e.preventDefault();
+                undo();
             }
-            if ((e.ctrlKey || e.metaKey) && (e.key === "y" || (e.shiftKey && e.key === "z"))) { 
-                e.preventDefault(); 
-                redo(); 
+            if ((e.ctrlKey || e.metaKey) && (e.key === "y" || (e.shiftKey && e.key === "z"))) {
+                e.preventDefault();
+                redo();
             }
         };
         window.addEventListener("keydown", handleKeyDown);
@@ -164,24 +203,24 @@ function FlowContent() {
                 colorMode="dark"
                 fitView
                 // 🚀 KEY: Control Interaction Mode here
-                panOnDrag={isHandMode} 
+                panOnDrag={isHandMode}
                 selectionOnDrag={!isHandMode}
                 panOnScroll={true}
                 nodesDraggable={!isHandMode}
             >
                 <Background color="#333" gap={20} size={1} />
-                
-                <MiniMap 
-                    className="bg-[#1a1a1a] border border-white/10 !bottom-4 !right-4" 
-                    maskColor="rgba(0,0,0, 0.7)" 
-                    nodeColor={() => "#dfff4f"} 
+
+                <MiniMap
+                    className="bg-[#1a1a1a] border border-white/10 !bottom-4 !right-4"
+                    maskColor="rgba(0,0,0, 0.7)"
+                    nodeColor={() => "#dfff4f"}
                 />
 
                 {/* 🚀 Centered Floating Bar with Undo/Redo + Zoom + Modes */}
                 <Panel position="bottom-center" className="mb-8">
-                    <CanvasControls 
-                        isHandMode={isHandMode} 
-                        toggleMode={setIsHandMode} 
+                    <CanvasControls
+                        isHandMode={isHandMode}
+                        toggleMode={setIsHandMode}
                     />
                 </Panel>
             </ReactFlow>

@@ -1,13 +1,14 @@
 "use client";
 
-import React, {useCallback, useRef, useState, useEffect} from "react";
-import {Handle, Position, NodeProps} from "@xyflow/react";
-import {ImageIcon, Upload, X, Loader2, AlertCircle, MoreHorizontal, Trash2} from "lucide-react";
-import {cn} from "@/lib/utils";
-import {ImageNodeType} from "@/lib/types"; // Ensure this matches your types definition
-import {useWorkflowStore} from "@/store/workflowStore";
+import React, { useCallback, useRef, useState, useEffect } from "react";
+import { Handle, Position, NodeProps } from "@xyflow/react";
+import { ImageIcon, Upload, X, Loader2, AlertCircle, MoreHorizontal, Trash2 } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { ImageNodeType } from "@/lib/types"; // Ensure this matches your types definition
+import { useWorkflowStore } from "@/store/workflowStore";
+import { uploadToTransloadit } from "@/lib/transloadit";
 
-export default function ImageNode({id, data, isConnectable, selected}: NodeProps<ImageNodeType>) {
+export default function ImageNode({ id, data, isConnectable, selected }: NodeProps<ImageNodeType>) {
 	const updateNodeData = useWorkflowStore((state) => state.updateNodeData);
 	const deleteNode = useWorkflowStore((state) => state.deleteNode);
 	const fileInputRef = useRef<HTMLInputElement>(null);
@@ -29,28 +30,20 @@ export default function ImageNode({id, data, isConnectable, selected}: NodeProps
 		return () => document.removeEventListener("mousedown", handleClickOutside);
 	}, []);
 
-	// Helper: Convert File to Base64
-	const fileToBase64 = (file: File): Promise<string> => {
-		return new Promise((resolve, reject) => {
-			const reader = new FileReader();
-			reader.readAsDataURL(file);
-			reader.onload = () => resolve(reader.result as string);
-			reader.onerror = (error) => reject(error);
-		});
-	};
-
 	const onFileChange = useCallback(
 		async (evt: React.ChangeEvent<HTMLInputElement>) => {
 			const file = evt.target.files?.[0];
 			if (!file) return;
 
 			try {
-				updateNodeData(id, {status: "loading"});
-				const base64String = await fileToBase64(file);
+				updateNodeData(id, { status: "loading" });
+
+				// Upload to Transloadit
+				const url = await uploadToTransloadit(file);
 
 				updateNodeData(id, {
 					file: {
-						url: base64String,
+						url: url,
 						name: file.name,
 						type: file.type,
 					},
@@ -58,10 +51,11 @@ export default function ImageNode({id, data, isConnectable, selected}: NodeProps
 					// Clear the demo image property if a user uploads manually
 					image: undefined,
 				});
-			} catch {
+			} catch (error) {
+				console.error("Transloadit error:", error);
 				updateNodeData(id, {
 					status: "error",
-					errorMessage: "Failed to process image",
+					errorMessage: "Failed to upload image",
 				});
 			}
 		},
@@ -72,7 +66,7 @@ export default function ImageNode({id, data, isConnectable, selected}: NodeProps
 		(e: React.MouseEvent) => {
 			e.stopPropagation();
 			// Clear both file and image properties
-			updateNodeData(id, {file: undefined, image: undefined, status: "idle"});
+			updateNodeData(id, { file: undefined, image: undefined, status: "idle" });
 			if (fileInputRef.current) fileInputRef.current.value = "";
 		},
 		[id, updateNodeData]

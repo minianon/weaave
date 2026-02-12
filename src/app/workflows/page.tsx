@@ -11,6 +11,8 @@ import SidebarNavigation from "@/components/workflow/SidebarNavigation";
 import type { Workflow } from "@/lib/types";
 import { useUser } from "@clerk/nextjs";
 
+import { PRODUCT_MARKETING_KIT_WORKFLOW } from "@/lib/sampleWorkflowData";
+
 export default function DashboardPage() {
     const router = useRouter();
     const { user } = useUser();
@@ -20,33 +22,32 @@ export default function DashboardPage() {
     const [searchQuery, setSearchQuery] = useState("");
 
     useEffect(() => {
-        const fetchWorkflows = async () => {
-            setLoading(true);
-            const res = await getAllWorkflowsAction();
-            if (res.success) {
-                setWorkflows(res.workflows);
-            } else if (res.error) {
-                console.error("Error fetching workflows:", res.error);
+        async function fetchWorkflows() {
+            try {
+                const result = await getAllWorkflowsAction();
+                if (result.success) {
+                    setWorkflows(result.workflows as Workflow[]);
+                } else {
+                    console.error("Failed to fetch workflows:", result.error);
+                }
+            } catch (error) {
+                console.error("Error fetching workflows:", error);
+            } finally {
+                setLoading(false);
             }
-            setLoading(false);
-        };
-
+        }
         fetchWorkflows();
     }, []);
 
     const handleCreateNew = async () => {
         setCreating(true);
-
         try {
-            // Create a new workflow in the database with empty nodes/edges
             const result = await saveWorkflowAction({
                 name: "Untitled Workflow",
                 nodes: [],
                 edges: [],
             });
-
             if (result.success && result.id) {
-                // Redirect to the new workflow editor
                 router.push(`/workflows/${result.id}`);
             } else {
                 alert(`Failed to create workflow: ${result.error}`);
@@ -54,7 +55,28 @@ export default function DashboardPage() {
             }
         } catch (error) {
             console.error("Error creating workflow:", error);
-            alert("Something went wrong while creating the workflow.");
+            alert("Something went wrong.");
+            setCreating(false);
+        }
+    };
+
+    const handleCreateSample = async () => {
+        setCreating(true);
+        try {
+            const result = await saveWorkflowAction({
+                name: "Product Marketing Kit (Sample)",
+                nodes: PRODUCT_MARKETING_KIT_WORKFLOW.nodes,
+                edges: PRODUCT_MARKETING_KIT_WORKFLOW.edges,
+            });
+            if (result.success && result.id) {
+                router.push(`/workflows/${result.id}`);
+            } else {
+                alert(`Failed to create sample: ${result.error}`);
+                setCreating(false);
+            }
+        } catch (error) {
+            console.error("Error creating sample:", error);
+            alert("Something went wrong.");
             setCreating(false);
         }
     };
@@ -115,13 +137,22 @@ export default function DashboardPage() {
                 {/* Header */}
                 <header className="h-14 border-b border-white/5 flex items-center justify-between px-8">
                     <h1 className="text-sm font-semibold text-white/80">{getUserDisplayName()} Workspace</h1>
-                    <button
-                        onClick={handleCreateNew}
-                        disabled={creating}
-                        className="flex items-center gap-2 border border-[#dfff4f] text-[#dfff4f] px-4 py-1.5 rounded-lg font-bold text-xs hover:bg-[#dfff4f] hover:text-black transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-                        {creating ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
-                        {creating ? "Creating..." : "Create New File"}
-                    </button>
+                    <div className="flex items-center gap-3">
+                        <button
+                            onClick={handleCreateSample}
+                            disabled={creating}
+                            className="flex items-center gap-2 border border-white/20 text-white/70 px-4 py-1.5 rounded-lg font-medium text-xs hover:bg-white/10 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                            {creating ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
+                            {creating ? "Creating..." : "Create Sample Kit"}
+                        </button>
+                        <button
+                            onClick={handleCreateNew}
+                            disabled={creating}
+                            className="flex items-center gap-2 border border-[#dfff4f] text-[#dfff4f] px-4 py-1.5 rounded-lg font-bold text-xs hover:bg-[#dfff4f] hover:text-black transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                            {creating ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
+                            {creating ? "Creating..." : "Create New File"}
+                        </button>
+                    </div>
                 </header>
 
                 <div className="flex-1 overflow-y-auto p-8">

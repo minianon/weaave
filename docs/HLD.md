@@ -42,9 +42,9 @@ Weave is a visual workflow builder that enables users to create AI-powered autom
 ┌──────────────────────────┐
 │     EXTERNAL APIS        │
 ├──────────────────────────┤
-│  • Google Gemini API     │
-│  • FFmpeg (for media)    │
-└──────────────────────────┘
+│  • Google Gemini API     │   │     TRANSLOADIT          │
+│  • FFmpeg (via Trigger)  │   │  (Media Uploads/Processing)   │
+└──────────────────────────┘   └──────────────────────────┘
 ```
 
 ## Core Components
@@ -53,6 +53,7 @@ Weave is a visual workflow builder that enables users to create AI-powered autom
 - **React Flow Canvas**: Visual workflow editor with node management
 - **Zustand Store**: Centralized state for nodes, edges, and execution status
 - **Clerk Components**: Authentication UI (sign-in, sign-up, user button)
+- **Transloadit Integration**: Client-side media uploads
 
 ### 2. Backend Layer
 - **Next.js API Routes**: RESTful endpoints for workflow CRUD operations

@@ -77,13 +77,43 @@ export interface LLMNodeData extends BaseNodeData {
     viewMode: 'single' | 'list';
 }
 
+// -- Video Upload Node --
+export interface VideoNodeData extends BaseNodeData {
+    file?: {
+        name: string;
+        type: string;
+        url: string;           // Transloadit CDN URL
+    };
+    inputType: 'upload' | 'url';
+}
+
+// -- Crop Image Node (FFmpeg via Trigger.dev) --
+export interface CropImageNodeData extends BaseNodeData {
+    imageUrl?: string;         // Input image URL (from connection or manual)
+    xPercent: number;          // 0-100, default 0
+    yPercent: number;          // 0-100, default 0
+    widthPercent: number;      // 0-100, default 100
+    heightPercent: number;     // 0-100, default 100
+    outputUrl?: string;        // Cropped image CDN URL (result)
+}
+
+// -- Extract Frame from Video Node (FFmpeg via Trigger.dev) --
+export interface ExtractFrameNodeData extends BaseNodeData {
+    videoUrl?: string;         // Input video URL (from connection or manual)
+    timestamp: number;         // Seconds into the video
+    outputUrl?: string;        // Extracted frame image URL (result)
+}
+
 
 // 1. Define the Full Node Types (This fixes the NodeProps error)
 export type TextNodeType = Node<TextNodeData, 'textNode'>;
 export type ImageNodeType = Node<ImageNodeData, 'imageNode'>;
 export type LLMNodeType = Node<LLMNodeData, 'llmNode'>;
+export type VideoNodeType = Node<VideoNodeData, 'videoNode'>;
+export type CropImageNodeType = Node<CropImageNodeData, 'cropImageNode'>;
+export type ExtractFrameNodeType = Node<ExtractFrameNodeData, 'extractFrameNode'>;
 // Union type for the Editor
-export type AppNodeData = TextNodeData | ImageNodeData | LLMNodeData;
+export type AppNodeData = TextNodeData | ImageNodeData | LLMNodeData | VideoNodeData | CropImageNodeData | ExtractFrameNodeData;
 export type AppNode = Node<AppNodeData>;
 
 
