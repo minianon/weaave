@@ -4,7 +4,7 @@ import React, { useCallback, useRef, useState, useEffect } from "react";
 import { Handle, Position, NodeProps, useReactFlow } from "@xyflow/react";
 import { Crop, Loader2, MoreHorizontal, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { CropImageNodeType } from "@/lib/types";
+import { CropImageNodeType, ImageNodeData, ExtractFrameNodeData, CropImageNodeData } from "@/lib/types";
 import { useWorkflowStore } from "@/store/workflowStore";
 
 import { executeNodeAction } from "@/app/actions/workflowActions";
@@ -52,9 +52,11 @@ export default function CropImageNode({ id, data, isConnectable, selected }: Nod
                 const sourceNode = allNodes.find(n => n.id === incomingEdge.source);
                 if (sourceNode) {
                     if (sourceNode.type === "imageNode") {
-                        inputImageUrl = sourceNode.data.file?.url || (sourceNode.data.image as string);
+                        const data = sourceNode.data as ImageNodeData;
+                        inputImageUrl = data.file?.url || ((data as any).image as string);
                     } else if (sourceNode.type === "cropImageNode" || sourceNode.type === "extractFrameNode") {
-                        inputImageUrl = sourceNode.data.outputUrl as string;
+                        const data = sourceNode.data as CropImageNodeData | ExtractFrameNodeData;
+                        inputImageUrl = data.outputUrl as string;
                     }
                 }
             }
