@@ -54,7 +54,7 @@ async function uploadToTransloaditServer(filePath: string, fileName: string, con
     }
 
     // If assembly is executing, we might get an assembly_url but not the file yet.
-    // For this assignment, we assume the template is synchronous enough or returns the upload URL immediately.
+    // We assume the template is synchronous enough or returns the upload URL immediately.
     // If not, we'd need to poll via assembly_url. 
     // Most simple store-only templates return immediately.
     if (result.assembly_url) {
@@ -135,7 +135,7 @@ export const extractFrameTask = task({
         await fs.writeFile(inputPath, Buffer.from(arrayBuffer));
 
         try {
-            // Assignment Requirements specify timestamp is optional, defaults to 0
+            // Timestamp is optional, defaults to 0
             let finalTimestamp = 0;
 
             if (timestamp === undefined || timestamp === null || timestamp === "") {
