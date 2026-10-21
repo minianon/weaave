@@ -9,7 +9,7 @@
 
 Design and run LLM-powered workflows on a visual canvas. Connect text, image, video, and AI nodes, and Weaave executes them in the background, running independent branches in parallel.
 
-**[Live app](https://weaave.minianon.in)** · **[Demo video](https://drive.google.com/file/d/1nvQmwF1iAUaH0JjeI3jRUtwsZ-R7XV3T/view?usp=sharing)** · **[How parallel execution works](https://www.loom.com/share/8477ddcaf092496b9cdf5df1c54947e7)**
+**[Live app](https://weaave.minianon.in)**
 
 ---
 
